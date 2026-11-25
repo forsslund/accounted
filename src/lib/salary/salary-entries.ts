@@ -42,7 +42,7 @@ import {
   resolveDeclaredAvgifterParams,
 } from './declared-avgifter'
 import { calculateLoneVaxlingPensionProvision } from './lonevaxling'
-import { computeRegionalSupport, regionalSupportEnabled } from './regional-support'
+import { computeAvgiftDeductions } from './fou-avdrag'
 import {
   linkRunRemeasurement,
   planVacationLiabilityRemeasure,
@@ -980,33 +980,41 @@ export function splitAvgifterLiability(
 }
 
 /**
- * The regionalt stöd avdrag (FK476) a run's AGI subtracts from the avgift,
- * from the booking's own roster rows: 0 unless the run was calculated with
- * company_settings.salary_regional_support on (regional-support.ts), or when
- * the roster lacks the underlag columns (legacy callers). The AGI generator
- * computes the same figure from the same snapshot and rows.
+ * The särskilda avdrag a run's AGI subtracts from the avgift, from the
+ * booking's own roster rows: the FoU-avdrag (FK475, employees frozen as
+ * fou_eligible in the run's snapshot, fou-avdrag.ts) and the regionalt stöd
+ * (FK476, company_settings.salary_regional_support on, regional-support.ts).
+ * Both 0 when the roster lacks the underlag columns (legacy callers). The
+ * AGI generator computes the same figures from the same snapshot and rows
+ * (computeAvgiftDeductions).
  */
-export function regionalSupportDeduction(
+export function avgiftDeductionsForBooking(
   run: {
     employees: Array<
-      Pick<SalaryRunEmployee, 'avgifter_amount' | 'avgifter_basis' | 'avgifter_rate' | 'avgifter_category' | 'avgifter_amount_overridden'>
+      Pick<
+        SalaryRunEmployee,
+        'employee_id' | 'avgifter_amount' | 'avgifter_basis' | 'avgifter_rate' | 'avgifter_category' | 'avgifter_amount_overridden'
+      >
     >
     calculation_params?: Record<string, unknown> | null
   },
-): number {
-  if (!regionalSupportEnabled(run.calculation_params)) return 0
+): { fou: number; regional: number } {
   if (!run.employees.every((e) => e.avgifter_amount_overridden === true || typeof e.avgifter_basis === 'number')) {
-    return 0
+    return { fou: 0, regional: 0 }
   }
-  const support = computeRegionalSupport(
-    run.employees.map((e) => ({
-      basis: e.avgifter_basis ?? 0,
-      rate: e.avgifter_rate,
-      category: e.avgifter_category ?? null,
-      overrideAmount: e.avgifter_amount_overridden === true ? e.avgifter_amount : null,
-    })),
+  const rows = run.employees.map((e) => ({
+    basis: e.avgifter_basis ?? 0,
+    rate: e.avgifter_rate,
+    category: e.avgifter_category ?? null,
+    overrideAmount: e.avgifter_amount_overridden === true ? e.avgifter_amount : null,
+    employeeId: e.employee_id,
+  }))
+  const deductions = computeAvgiftDeductions(
+    rows,
+    run.calculation_params,
+    computeDeclaredAvgifterWithOverrides(rows, resolveDeclaredAvgifterParams(run.calculation_params)),
   )
-  return support?.deduction ?? 0
+  return { fou: deductions.fou?.deduction ?? 0, regional: deductions.regional?.deduction ?? 0 }
 }
 
 /**
@@ -1016,9 +1024,10 @@ export function regionalSupportDeduction(
  * Credit: 2731 Avräkning sociala avgifter (whole kronor: the amount
  *         Skatteverket computes from the declared underlag and draws)
  * Credit: 3740 Öres- och kronutjämning (the remainder)
+ * Credit: 7510 Avdrag FoU (whole kronor, lag 2023:747): the FK475 avdrag
  * Credit: 7510 Avdrag regionalt stöd (whole kronor, PH 208): the FK476
- *         avdrag lowers both the avgift cost and the 2731 liability, so
- *         2731 still equals the FK487 the AGI files and Skatteverket draws
+ *         avdrag. Each lowers both the avgift cost and the 2731 liability,
+ *         so 2731 still equals the FK487 the AGI files and Skatteverket draws
  *
  * 2731 holds the declared amount (computeDeclaredAvgifter: per-sats on
  * whole-krona underlag, the same number the AGI's FK487 carries): crediting
@@ -1038,10 +1047,12 @@ function buildAvgifterLines(run: SalaryRunData, desc: string): CreateJournalEntr
   if (buckets.length === 0) return []
   const roundedAvgifter = roundOre(buckets.reduce((sum, b) => sum + b.amount, 0))
   const { liabilityAvgifter: grossLiability, oresutjamning } = splitAvgifterLiability(run, roundedAvgifter)
-  // Never more than the liability it reduces (it cannot be: 10 % of the
-  // underlag stays below the avgift on it), so the entry always balances.
-  const regionalDeduction = Math.min(regionalSupportDeduction(run), Math.max(grossLiability, 0))
-  const liabilityAvgifter = roundOre(grossLiability - regionalDeduction)
+  // Never more than the liability they reduce (they cannot be: both stop at
+  // the ålderspensionsavgift on the underlag), so the entry always balances.
+  const deductions = avgiftDeductionsForBooking(run)
+  const fouDeduction = Math.min(deductions.fou, Math.max(grossLiability, 0))
+  const regionalDeduction = Math.min(deductions.regional, Math.max(grossLiability - fouDeduction, 0))
+  const liabilityAvgifter = roundOre(grossLiability - fouDeduction - regionalDeduction)
 
   const lines: CreateJournalEntryLineInput[] = [
     ...buckets.map((bucket): CreateJournalEntryLineInput => ({
@@ -1069,6 +1080,16 @@ function buildAvgifterLines(run: SalaryRunData, desc: string): CreateJournalEntr
             debit_amount: 0,
             credit_amount: oresutjamning,
             line_description: `${desc}: Öres- och kronutjämning`,
+          } satisfies CreateJournalEntryLineInput,
+        ]
+      : []),
+    ...(fouDeduction > 0
+      ? [
+          {
+            account_number: SALARY_ACCOUNTS.AVGIFTER_EXPENSE,
+            debit_amount: 0,
+            credit_amount: fouDeduction,
+            line_description: `${desc}: Avdrag FoU`,
           } satisfies CreateJournalEntryLineInput,
         ]
       : []),

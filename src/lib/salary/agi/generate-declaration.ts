@@ -45,8 +45,8 @@ import {
 } from '../benefit-payments'
 import { eventBus } from '@/lib/events'
 import { truncateToWholeKronor } from '@/lib/money'
-import { declaredAvgifterForRun, isFSkattStatus } from '../declared-avgifter'
-import { regionalSupportForRun } from '../regional-support'
+import { declaredAvgifterForRun, declaredAvgifterRowsForRun, isFSkattStatus } from '../declared-avgifter'
+import { computeAvgiftDeductions } from '../fou-avdrag'
 import { agiFiledForRun } from '../agi-submission-state'
 import type { Logger } from '@/lib/logger'
 import { stockholmYearMonth } from '@/lib/dates/iso'
@@ -939,16 +939,20 @@ export async function generateAgiDeclaration(
   )
   const avgifterByCategory = declared.byCategory as AGITotals['avgifterByCategory']
   const totalAvgifterBasis = declared.totalUnderlag
-  // Regionalt stöd (PH 208): when the run was calculated with the company's
-  // setting on, HU carries FK471/FK476 and FK487 is the avgift after the
-  // avdrag (Skatteverket's IK587 subtracts FK476; kontroll B_006). The
-  // stored total_avgifter, the tax payment and the booked 2731
-  // (salary-entries.ts) follow the same net figure.
-  const regionalSupport = regionalSupportForRun(
-    parsedRows,
+  // Särskilda avdrag: the FoU-avdrag (lag 2023:747, employees attested
+  // fou_eligible when the run was calculated) puts FK470/FK475 on HU, the
+  // regionalt stöd (PH 208, the company's setting) FK471/FK476. FK487 is the
+  // avgift after both (Skatteverket's IK587 subtracts FK475 and FK476;
+  // kontroll B_006). The stored total_avgifter, the tax payment and the
+  // booked 2731 (salary-entries.ts) follow the same net figure.
+  const deductions = computeAvgiftDeductions(
+    declaredAvgifterRowsForRun(parsedRows),
     (run.calculation_params as Record<string, unknown> | null) ?? null,
+    declared,
   )
-  const totalAvgifterAmount = declared.totalAmount - (regionalSupport?.deduction ?? 0)
+  const regionalSupport = deductions.regional
+  const fouDeduction = deductions.fou
+  const totalAvgifterAmount = declared.totalAmount - deductions.total
 
   // FK497 SummaSkatteavdr must equal the sum of FK001 on active IUs (not
   // run.total_tax, which includes removed rows). Same for FK487.
@@ -971,6 +975,7 @@ export async function generateAgiDeclaration(
     totalAvgifterAmount,
     avgifterByCategory,
     ...(regionalSupport ? { regionalSupport } : {}),
+    ...(fouDeduction ? { fouDeduction } : {}),
   }
 
   // Soft AGI deadline check: warn (but don't block) when generating for a

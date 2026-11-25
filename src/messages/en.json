@@ -12924,6 +12924,7 @@
     "kpi_avgifter": "Contributions",
     "kpi_avgifter_declared": "Declared in whole kronor: {amount}",
     "kpi_avgifter_regional_support": "Regional support deduction: -{amount} (box 476)",
+    "kpi_avgifter_fou": "Research and development deduction: -{amount} (box 475)",
     "avgifter_declared_help": "The employer declaration (AGI) is stated in whole kronor. Skatteverket computes the contributions on the whole-krona basis and drops the öre, and that is the amount drawn from the tax account. The difference from the computed contributions is rounding.",
     "kpi_employer_cost": "Total cost",
     "nollkorning_title": "Zero run",

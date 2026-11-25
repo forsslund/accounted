@@ -93,7 +93,7 @@ describe('GET /reports/avgifter-basis', () => {
       rows: [
         { periodYear: 2026, periodMonth: 9, category: 'youth', categoryLabel: 'Ungdomsrabatt (20,81%)', rate: 0.2081, basis: 25000, amount: 5202, employeeCount: 1 },
       ],
-      totals: { totalBasis: 25000, totalAmount: 5202, regionalSupportDeduction: 0 },
+      totals: { totalBasis: 25000, totalAmount: 5202, regionalSupportDeduction: 0, fouDeduction: 0 },
     }
     mockGenerate.mockResolvedValue(report)
 

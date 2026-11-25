@@ -292,6 +292,7 @@ registerEndpoint({
     'A worker reported to Fora every month (Avtalspension SAF-LO) needs fora_fok_id (FOK plus six digits, from Fora\'s Mina sidor) together with fora_fok_start_date; never on company_owner or board_member (400).',
     'The response masks personnummer; never echo back the supplied value. Detail endpoint (deliberate drill-in) returns the full value.',
     'vaxa_stod_eligible never lowers the arbetsgivaravgifter: from redovisningsperiod 202601 (Lag 2025:1334) the AGI declares the full avgifter and the company applies to Skatteverket for the refund after filing. A salary run paid inside vaxa_stod_start..vaxa_stod_end (end optional; never past the 24th calendar month counted from the start month) notes the expected refund per employee and warns to apply.',
+    'fou_eligible attests that the person works with forskning eller utveckling at least half and at least 15 hours of the actual working time each month (lag 2023:747 7 §). A salary run calculated while it is on declares FK470/FK475 in the AGI (20 % of the full-rate underlag, at most 3 000 000 kr per month), lowers FK487 by the avdrag and books it back on 7510, so 2731 matches the AGI. Turn it off for a month the condition fails and recalculate the run.',
   ],
   example: {
     request: {

@@ -653,6 +653,7 @@ export const EMPLOYEE_PAY_FIELDS: Record<string, string> = {
   vaxa_stod_eligible: 'Växa-stöd',
   vaxa_stod_start: 'Växa-stöd från',
   vaxa_stod_end: 'Växa-stöd till',
+  fou_eligible: 'FoU-avdrag',
   fora_fok_id: 'Fora-kod',
   fora_fok_start_date: 'Fora-kod gäller från',
   default_dimensions: 'Dimensioner (standard)',

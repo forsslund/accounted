@@ -152,6 +152,7 @@ const CALCULATION_EMPLOYEE_COLUMNS = [
   'vaxa_stod_eligible',
   'vaxa_stod_start',
   'vaxa_stod_end',
+  'fou_eligible',
 ] as const
 
 /** True when the write changes a column the calculation reads: a form saves every field, changed or not. */

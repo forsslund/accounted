@@ -223,7 +223,7 @@ export interface AGICompanyData {
 export interface AGITotals {
   totalTax: number                // FK497 SummaSkatteavdr
   totalAvgifterBasis: number      // retained for compat (sum of IU underlag)
-  totalAvgifterAmount: number     // FK487 SummaArbAvgSlf (calculated avgifter across categories, less regionalSupport.deduction)
+  totalAvgifterAmount: number     // FK487 SummaArbAvgSlf (calculated avgifter across categories, less fouDeduction and regionalSupport deductions)
   avgifterByCategory: {
     standard?: { basis: number; amount: number }
     reduced65plus?: { basis: number; amount: number }
@@ -235,6 +235,12 @@ export interface AGITotals {
    * amounts less the avdrag (Skatteverket's IK587, kontroll B_006).
    */
   regionalSupport?: { underlag: number; deduction: number } | null
+  /**
+   * FoU-avdrag (lib/salary/fou-avdrag.ts): FK470 underlag and FK475 avdrag
+   * in HU. When present, totalAvgifterAmount is also less this avdrag
+   * (IK587 subtracts FK475, kontroll B_006).
+   */
+  fouDeduction?: { underlag: number; deduction: number } | null
 }
 
 /**
@@ -537,6 +543,13 @@ export function generateAGIXml(
   // FK487: Summa arbetsgivaravgifter och SLF (calculated total, NOT basis)
   if (totals.totalAvgifterAmount > 0) {
     lines.push(`        <gem:SummaArbAvgSlf faltkod="487">${formatAmount(totals.totalAvgifterAmount)}</gem:SummaArbAvgSlf>`)
+  }
+
+  // FK470/FK475: FoU-avdrag, both or neither (kontroll S_102/S_104).
+  // FK487 above already carries the avgift after the avdrag (IK587, B_006).
+  if (totals.fouDeduction && totals.fouDeduction.deduction > 0) {
+    lines.push(`        <gem:UlagFoU faltkod="470">${formatAmount(totals.fouDeduction.underlag)}</gem:UlagFoU>`)
+    lines.push(`        <gem:AvdragFoU faltkod="475">${formatAmount(totals.fouDeduction.deduction)}</gem:AvdragFoU>`)
   }
 
   // FK471/FK476: regionalt stöd, both or neither (kontroll S_106/S_108).

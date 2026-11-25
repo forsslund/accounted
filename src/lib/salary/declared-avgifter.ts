@@ -230,6 +230,8 @@ export interface DeclaredAvgifterHybridRow extends DeclaredAvgifterRow {
    * `basis` (the FILED underlag) like computeDeclaredAvgifter.
    */
   overrideAmount?: number | null
+  /** The employee the row belongs to: the FoU-avdrag is per person (fou-avdrag.ts). */
+  employeeId?: string | null
 }
 
 export interface DeclaredAvgifterWithOverrides {
@@ -288,6 +290,7 @@ export function computeDeclaredAvgifterWithOverrides(
 
 /** One salary_run_employees row as stored, with the F-skatt join. */
 export interface DeclaredAvgifterRunRow {
+  employee_id?: string | null
   avgifter_basis: number
   avgifter_basis_override?: number | null
   avgifter_amount_override?: number | null
@@ -332,7 +335,8 @@ export function declaredAvgifterForRun(
  * The stored roster rows as the AGI declares them (the row rules above):
  * borttag tombstones dropped, F-skatt rows at basis 0, amount overrides
  * carried with their override-coalesced basis. Shared with the regionalt
- * stöd underlag (regional-support.ts) so FK471 reads the rows FK487 reads.
+ * stöd and FoU underlag (regional-support.ts, fou-avdrag.ts) so FK471 and
+ * FK470 read the rows FK487 reads.
  */
 export function declaredAvgifterRowsForRun(rows: DeclaredAvgifterRunRow[]): DeclaredAvgifterHybridRow[] {
   return rows
@@ -349,6 +353,7 @@ export function declaredAvgifterRowsForRun(rows: DeclaredAvgifterRunRow[]): Decl
         rate: sre.avgifter_rate,
         category: sre.avgifter_category ?? null,
         overrideAmount: overridden ? sre.avgifter_amount_override : null,
+        employeeId: sre.employee_id ?? null,
       }
     })
 }
