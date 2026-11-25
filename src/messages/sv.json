@@ -12924,6 +12924,7 @@
     "kpi_avgifter": "Avgifter",
     "kpi_avgifter_declared": "Deklareras i hela kronor: {amount}",
     "kpi_avgifter_regional_support": "Avdrag regionalt stöd: -{amount} (ruta 476)",
+    "kpi_avgifter_fou": "Avdrag för forskning och utveckling: -{amount} (ruta 475)",
     "avgifter_declared_help": "Arbetsgivardeklarationen anges i hela kronor. Skatteverket räknar avgiften på underlaget i hela kronor och stryker ören, och det är det beloppet som dras från skattekontot. Skillnaden mot den beräknade avgiften är avrundning.",
     "kpi_employer_cost": "Total kostnad",
     "nollkorning_title": "Nollkörning",

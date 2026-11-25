@@ -58,6 +58,7 @@ import {
 } from './payroll-config'
 import { fetchAllTaxTableRatesForRun, TaxTableUnavailableError } from './tax-tables'
 import { REGIONAL_SUPPORT_PARAM } from './regional-support'
+import { FOU_EMPLOYEES_PARAM } from './fou-avdrag'
 import { AbsenceInputError, deriveEmployeeAbsence, loadRunAbsence } from './derive-absence-line-items'
 import { monthWindow, runDeviationWindow } from './deviation-period'
 import type { MoneyLineItemType } from './account-mapping'
@@ -317,6 +318,9 @@ export async function runSalaryCalculation(
   // then yields all-zero totals plus a frozen calculation_params snapshot,
   // and every downstream loop simply iterates zero times.
   const runEmployees = runEmployeesData ?? []
+  const fouEmployeeIds = runEmployees
+    .filter((sre) => sre.employee?.fou_eligible === true)
+    .map((sre) => sre.employee_id as string)
 
   // 4. Pre-calculation validation: ensure every employee has the data the
   //    engine needs. We accumulate ALL errors so the caller sees a complete
@@ -1492,6 +1496,10 @@ export async function runSalaryCalculation(
         salary_calculation_policy: calculationPolicy,
         // Only when on, so a run calculated without it keeps its snapshot shape.
         ...(regionalSupport ? { [REGIONAL_SUPPORT_PARAM]: true } : {}),
+        // FoU-avdrag (fou-avdrag.ts, lag 2023:747): the employees attested
+        // fou_eligible, frozen so the booking and the AGI read the answer
+        // the run was calculated with. Only when any, like the flag above.
+        ...(fouEmployeeIds.length > 0 ? { [FOU_EMPLOYEES_PARAM]: fouEmployeeIds } : {}),
         // Likewise only under 'remeasure': an accrual run's snapshot is unchanged.
         ...(remeasureVacationLiability ? { [VACATION_LIABILITY_METHOD_PARAM]: 'remeasure' } : {}),
       },

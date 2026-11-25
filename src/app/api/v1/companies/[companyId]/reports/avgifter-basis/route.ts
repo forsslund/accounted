@@ -24,7 +24,7 @@ registerEndpoint({
   path: '/api/v1/companies/:companyId/reports/avgifter-basis',
   summary: 'The year\'s declared arbetsgivaravgifter per month and sats.',
   description:
-    'Returns the arbetsgivaravgifter the booked salary runs of `year` declare, one row per AGI period and sats: `periodMonth`, `category`, the whole-krona `basis` and `amount`, computed as the AGI computes them (stored category, youth cap split, overrides, F-skatt and borttag). `totals.totalAmount` is the year\'s FK487, after any regional support. Reconciles to the monthly AGI filings.',
+    'Returns the arbetsgivaravgifter the booked salary runs of `year` declare, one row per AGI period and sats: `periodMonth`, `category`, the whole-krona `basis` and `amount`, computed as the AGI computes them (stored category, youth cap split, overrides, F-skatt and borttag). `totals.totalAmount` is the year\'s FK487, after any FoU-avdrag and regional support. Reconciles to the monthly AGI filings.',
   useWhen:
     'Annual reconciliation between the AGI declarations and the bookkeeping (BAS 7510). Year-end audit prep.',
   doNotUseFor:
@@ -40,7 +40,7 @@ registerEndpoint({
       data: {
         year: 2026,
         rows: [{ periodYear: 2026, periodMonth: 9, category: 'standard', categoryLabel: 'Standard (31,42%)', rate: 0.3142, basis: 30000, amount: 9426, employeeCount: 1 }],
-        totals: { totalBasis: 30000, totalAmount: 9426, regionalSupportDeduction: 0 },
+        totals: { totalBasis: 30000, totalAmount: 9426, regionalSupportDeduction: 0, fouDeduction: 0 },
       },
       meta: { request_id: 'req_…', api_version: '2026-05-12' },
     },

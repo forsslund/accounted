@@ -1578,7 +1578,7 @@ Example response `200`:
 **The year's declared arbetsgivaravgifter per month and sats.**
 `scope:payroll:read · risk:low · idempotent`
 
-Returns the arbetsgivaravgifter the booked salary runs of `year` declare, one row per AGI period and sats: `periodMonth`, `category`, the whole-krona `basis` and `amount`, computed as the AGI computes them (stored category, youth cap split, overrides, F-skatt and borttag). `totals.totalAmount` is the year's FK487, after any regional support. Reconciles to the monthly AGI filings.
+Returns the arbetsgivaravgifter the booked salary runs of `year` declare, one row per AGI period and sats: `periodMonth`, `category`, the whole-krona `basis` and `amount`, computed as the AGI computes them (stored category, youth cap split, overrides, F-skatt and borttag). `totals.totalAmount` is the year's FK487, after any FoU-avdrag and regional support. Reconciles to the monthly AGI filings.
 
 **Use when:** Annual reconciliation between the AGI declarations and the bookkeeping (BAS 7510). Year-end audit prep.
 **Do not use for:** Real-time AGI generation (POST /salary-runs/{id}/generate-agi). Per-run breakdown (use /reports/salary-journal).
@@ -1630,7 +1630,8 @@ Example response `200`:
     "totals": {
       "totalBasis": 30000,
       "totalAmount": 9426,
-      "regionalSupportDeduction": 0
+      "regionalSupportDeduction": 0,
+      "fouDeduction": 0
     }
   },
   "meta": {

@@ -22234,7 +22234,7 @@ export const tools: McpTool[] = [
       const { data: e, error } = await supabase
         .from('employees')
         .select(
-          'id, first_name, last_name, personnummer, employment_type, personnel_category, employment_start, employment_end, employment_degree, hours_per_week, workdays_per_week, salary_type, monthly_salary, hourly_rate, tax_table_number, tax_column, tax_municipality, is_sidoinkomst, f_skatt_status, f_skatt_verified_at, jamkning_percentage, jamkning_valid_from, jamkning_valid_to, extra_tax_amount, extra_tax_percentage, clearing_number, bank_account_number, vacation_rule, vacation_days_per_year, vacation_days_saved, semestertillagg_rate, vacation_pay_rate, vaxa_stod_eligible, vaxa_stod_start, vaxa_stod_end, email, phone, address_line1, postal_code, city, default_dimensions, is_active, fora_fok_id, fora_fok_start_date',
+          'id, first_name, last_name, personnummer, employment_type, personnel_category, employment_start, employment_end, employment_degree, hours_per_week, workdays_per_week, salary_type, monthly_salary, hourly_rate, tax_table_number, tax_column, tax_municipality, is_sidoinkomst, f_skatt_status, f_skatt_verified_at, jamkning_percentage, jamkning_valid_from, jamkning_valid_to, extra_tax_amount, extra_tax_percentage, clearing_number, bank_account_number, vacation_rule, vacation_days_per_year, vacation_days_saved, semestertillagg_rate, vacation_pay_rate, vaxa_stod_eligible, vaxa_stod_start, vaxa_stod_end, fou_eligible, email, phone, address_line1, postal_code, city, default_dimensions, is_active, fora_fok_id, fora_fok_start_date',
         )
         .eq('id', employeeId)
         .eq('company_id', companyId)
@@ -22291,6 +22291,7 @@ export const tools: McpTool[] = [
           start: e.vaxa_stod_start,
           end: e.vaxa_stod_end,
         },
+        fou_eligible: e.fou_eligible === true,
         bank: {
           clearing_number: e.clearing_number,
           bank_account_number: e.bank_account_number,
@@ -22969,9 +22970,10 @@ export const tools: McpTool[] = [
         address_line1: { type: 'string' },
         postal_code: { type: 'string' },
         city: { type: 'string' },
-        vaxa_stod_eligible: { type: 'boolean', description: 'Never lowers avgifter: the AGI declares them in full; apply to Skatteverket for the refund' },
+        vaxa_stod_eligible: { type: 'boolean', description: 'AGI declares full avgifter; apply for the refund' },
         vaxa_stod_start: { type: 'string' },
         vaxa_stod_end: { type: 'string' },
+        fou_eligible: { type: 'boolean' },
         jamkning_percentage: { type: 'number', description: 'Requires both dates, else rejected' },
         jamkning_valid_from: { type: 'string' },
         jamkning_valid_to: { type: 'string' },
@@ -23094,9 +23096,10 @@ export const tools: McpTool[] = [
         is_active: { type: 'boolean', description: 'false deactivates (row kept), true reactivates' },
         // The refusal (EMPLOYEE_SAMMALONEREGELN_DEGREE_CHANGED) explains it.
         sammaloneregeln_kollektivavtal_confirmed: { type: 'boolean' },
-        vaxa_stod_eligible: { type: 'boolean', description: 'Never lowers avgifter: the AGI declares them in full; apply to Skatteverket for the refund' },
+        vaxa_stod_eligible: { type: 'boolean', description: 'AGI declares full avgifter; apply for the refund' },
         vaxa_stod_start: { type: ['string', 'null'] },
         vaxa_stod_end: { type: ['string', 'null'] },
+        fou_eligible: { type: 'boolean' },
         jamkning_percentage: { type: ['number', 'null'], description: 'Requires both dates' },
         jamkning_valid_from: { type: ['string', 'null'] },
         jamkning_valid_to: { type: ['string', 'null'] },

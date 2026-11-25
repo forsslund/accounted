@@ -5,7 +5,7 @@ import {
   type DeclaredAvgifterCategory,
   type DeclaredAvgifterRunRow,
 } from '@/lib/salary/declared-avgifter'
-import { regionalSupportForRun } from '@/lib/salary/regional-support'
+import { avgiftDeductionsForRun } from '@/lib/salary/fou-avdrag'
 import { fetchAllRows } from '@/lib/supabase/fetch-all'
 
 /**
@@ -43,10 +43,12 @@ export interface AvgifterBasisReport {
   rows: AvgifterBasisRow[]
   totals: {
     totalBasis: number
-    /** The year's FK487, after regional support. */
+    /** The year's FK487, after the FoU-avdrag and regional support. */
     totalAmount: number
     /** Regionalt stöd taken off the rows' avgifter in the declarations (FK476). */
     regionalSupportDeduction: number
+    /** FoU-avdrag taken off the rows' avgifter in the declarations (FK475). */
+    fouDeduction: number
   }
   year: number
 }
@@ -85,6 +87,7 @@ export async function generateAvgifterBasis(
       .from('salary_run_employees')
       .select(`
         id,
+        employee_id,
         avgifter_basis,
         avgifter_basis_override,
         avgifter_amount_override,
@@ -110,11 +113,14 @@ export async function generateAvgifterBasis(
 
   const grouped = new Map<string, AvgifterBasisRow>()
   let regionalSupportDeduction = 0
+  let fouDeduction = 0
 
   for (const { run, rows } of byRun.values()) {
     const { periodMonth } = agiReportingPeriod(run)
     const params = run.calculation_params
-    regionalSupportDeduction += regionalSupportForRun(rows, params)?.deduction ?? 0
+    const deductions = avgiftDeductionsForRun(rows, params)
+    regionalSupportDeduction += deductions.regional?.deduction ?? 0
+    fouDeduction += deductions.fou?.deduction ?? 0
     const categories = Object.entries(declaredAvgifterForRun(rows, params).byCategory) as Array<
       [DeclaredAvgifterCategory, { basis: number; amount: number }]
     >
@@ -147,8 +153,9 @@ export async function generateAvgifterBasis(
     rows,
     totals: {
       totalBasis: rows.reduce((sum, row) => sum + row.basis, 0),
-      totalAmount: rows.reduce((sum, row) => sum + row.amount, 0) - regionalSupportDeduction,
+      totalAmount: rows.reduce((sum, row) => sum + row.amount, 0) - regionalSupportDeduction - fouDeduction,
       regionalSupportDeduction,
+      fouDeduction,
     },
     year,
   }

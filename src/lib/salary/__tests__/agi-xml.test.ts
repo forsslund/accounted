@@ -203,6 +203,26 @@ describe('generateAGIXml: Huvuduppgift (HU)', () => {
     }
   })
 
+  it('emits the FoU-avdrag as FK470 underlag and FK475 avdrag in HU', () => {
+    const xml = generateAGIXml(company, employees, {
+      ...totals,
+      totalAvgifterAmount: 24075 - 15000,
+      fouDeduction: { underlag: 75000, deduction: 15000 },
+    })
+    const hu = xml.match(/<gem:HU>[\s\S]*?<\/gem:HU>/)![0]
+    expect(hu).toContain('<gem:UlagFoU faltkod="470">75000</gem:UlagFoU>')
+    expect(hu).toContain('<gem:AvdragFoU faltkod="475">15000</gem:AvdragFoU>')
+    expect(hu).toContain('<gem:SummaArbAvgSlf faltkod="487">9075</gem:SummaArbAvgSlf>')
+  })
+
+  it('emits neither FK470 nor FK475 without a FoU-avdrag (kontroll S_102/S_104)', () => {
+    for (const fouDeduction of [undefined, null, { underlag: 4, deduction: 0 }]) {
+      const xml = generateAGIXml(company, employees, { ...totals, fouDeduction })
+      expect(xml).not.toContain('faltkod="470"')
+      expect(xml).not.toContain('faltkod="475"')
+    }
+  })
+
   it('never emits FK499 TotalSjuklonekostnad: retired with högkostnadsskyddet, invalid after 202406', () => {
     const xml = generateAGIXml(company, employees, totals)
     expect(xml).not.toContain('faltkod="499"')

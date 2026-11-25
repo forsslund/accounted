@@ -1948,6 +1948,60 @@ describe('salary entries: regionalt stöd avdrag (PH 208)', () => {
   })
 })
 
+describe('salary entries: FoU-avdrag (lag 2023:747)', () => {
+  const fou = (employees: ReturnType<typeof makeEmployee>[], ids: string[], extra: Record<string, unknown> = {}) => ({
+    ...makeRun(employees),
+    calculation_params: {
+      slpRate: 0.2426,
+      avgifterTotal: 0.3142,
+      avgifterAlderspension: 0.1021,
+      salary_fou_employee_ids: ids,
+      ...extra,
+    },
+  })
+
+  it('credits the FK475 avdrag on 7510 and books 2731 at the FK487 the AGI files', async () => {
+    // 40 000 × 31,42 % = 12 568; avdrag 20 % of 40 000 = 8 000.
+    const employee = makeEmployee({ employee_id: 'ceo', gross_salary: 40000, avgifter_basis: 40000, avgifter_amount: 12568 })
+    await createSalaryRunEntries(makeSupabase(), 'company-1', 'user-1', fou([employee], ['ceo']))
+    const avgifter = entryByDescription('Arbetsgivaravgifter')
+    expect(linesOn(avgifter, '7510')).toEqual([
+      expect.objectContaining({ debit_amount: 12568, credit_amount: 0 }),
+      expect.objectContaining({ debit_amount: 0, credit_amount: 8000, line_description: 'Lön 2026-06: Avdrag FoU' }),
+    ])
+    expect(linesOn(avgifter, '2731')).toEqual([expect.objectContaining({ credit_amount: 4568 })])
+    assertBalanced(avgifter)
+  })
+
+  it('books no FoU-avdrag for an employee outside the snapshot', async () => {
+    const employee = makeEmployee({ employee_id: 'dev', gross_salary: 40000, avgifter_basis: 40000, avgifter_amount: 12568 })
+    await createSalaryRunEntries(makeSupabase(), 'company-1', 'user-1', fou([employee], ['someone-else']))
+    const avgifter = entryByDescription('Arbetsgivaravgifter')
+    expect(linesOn(avgifter, '7510')).toHaveLength(1)
+    expect(linesOn(avgifter, '2731')).toEqual([expect.objectContaining({ credit_amount: 12568 })])
+  })
+
+  it('books both avdrag with regionalt stöd capped at the ålderspensionsavgift', async () => {
+    const employee = makeEmployee({ employee_id: 'ceo', gross_salary: 40000, avgifter_basis: 40000, avgifter_amount: 12568 })
+    await createSalaryRunEntries(
+      makeSupabase(),
+      'company-1',
+      'user-1',
+      fou([employee], ['ceo'], { salary_regional_support: true }),
+    )
+    // Floor ceil(40 000 × 10,21 %) = 4 084: regional 4 000 capped at
+    // 12 568 - 8 000 - 4 084 = 484.
+    const avgifter = entryByDescription('Arbetsgivaravgifter')
+    expect(linesOn(avgifter, '7510')).toEqual([
+      expect.objectContaining({ debit_amount: 12568 }),
+      expect.objectContaining({ credit_amount: 8000, line_description: 'Lön 2026-06: Avdrag FoU' }),
+      expect.objectContaining({ credit_amount: 484, line_description: 'Lön 2026-06: Avdrag regionalt stöd' }),
+    ])
+    expect(linesOn(avgifter, '2731')).toEqual([expect.objectContaining({ credit_amount: 4084 })])
+    assertBalanced(avgifter)
+  })
+})
+
 describe('salary entries under the remeasure method (semesterlöneskuld at its computed value)', () => {
   const REMEASURE_LINES = [
     { account_number: '7290', debit_amount: 2500, credit_amount: 0, line_description: 'Semesterlöneskuld, förändring' },

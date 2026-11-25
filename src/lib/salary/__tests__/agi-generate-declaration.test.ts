@@ -1740,6 +1740,50 @@ describe('generateAgiDeclaration: regionalt stöd (PH 208)', () => {
     expect(result.xml).not.toContain('faltkod="471"')
     expect(result.xml).not.toContain('faltkod="476"')
   })
+
+  // FoU-avdrag (lag 2023:747 8 §, Skatteverket S_102/S_104/S_194/B_006).
+  it('declares FK470/FK475 for the FoU employees the run was calculated with and files FK487 after the avdrag', async () => {
+    const result = await generate(
+      { avgifterTotal: 0.3142, avgifterAlderspension: 0.1021, salary_fou_employee_ids: [REGULAR_ROW.employee_id] },
+      [REGULAR_ROW],
+    )
+    // 40 000 × 31,42 % = 12 568; avdrag 20 % of 40 000 = 8 000; FK487 4 568.
+    expect(result.totals.fouDeduction).toEqual({ underlag: 40000, deduction: 8000 })
+    expect(result.totals.totalAvgifterAmount).toBe(4568)
+    const hu = result.xml.match(/<gem:HU>[\s\S]*?<\/gem:HU>/)![0]
+    expect(hu).toContain('<gem:UlagFoU faltkod="470">40000</gem:UlagFoU>')
+    expect(hu).toContain('<gem:AvdragFoU faltkod="475">8000</gem:AvdragFoU>')
+    expect(hu).toContain('<gem:SummaArbAvgSlf faltkod="487">4568</gem:SummaArbAvgSlf>')
+    // The IU is unchanged: the avdrag lives in HU only.
+    expect(iuBlockFor(result.xml, '199001011234')).toContain(
+      '<gem:KontantErsattningUlagAG faltkod="011">40000</gem:KontantErsattningUlagAG>',
+    )
+  })
+
+  it('takes the FoU-avdrag only on the eligible employees and caps regionalt stöd at the ålderspensionsavgift', async () => {
+    const result = await generate(
+      {
+        avgifterTotal: 0.3142,
+        avgifterAlderspension: 0.1021,
+        salary_regional_support: true,
+        salary_fou_employee_ids: [REGULAR_ROW.employee_id],
+      },
+      [REGULAR_ROW, SENIOR_ROW],
+    )
+    // FoU: 20 % of the eligible 40 000 = 8 000 (the 67+ row is not eligible).
+    // Declared 12 568 + 3 063 = 15 631; floor ceil(70 000 × 10,21 %) = 7 147;
+    // regional 10 % of 40 000 = 4 000 > room 15 631 - 8 000 - 7 147 = 484.
+    expect(result.totals.fouDeduction).toEqual({ underlag: 40000, deduction: 8000 })
+    expect(result.totals.regionalSupport).toEqual({ underlag: 40000, deduction: 484 })
+    expect(result.totals.totalAvgifterAmount).toBe(7147)
+  })
+
+  it('files no FK470/FK475 when no employee was FoU-eligible at calculation', async () => {
+    const result = await generate({ avgifterTotal: 0.3142, salary_fou_employee_ids: [] }, [REGULAR_ROW])
+    expect(result.totals.fouDeduction).toBeUndefined()
+    expect(result.xml).not.toContain('faltkod="470"')
+    expect(result.xml).not.toContain('faltkod="475"')
+  })
 })
 
 describe('generateAgiDeclaration: a filed declaration is never rewritten (#58)', () => {

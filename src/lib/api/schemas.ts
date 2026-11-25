@@ -5199,6 +5199,10 @@ const EmployeeSchemaBase = z.object({
   vaxa_stod_eligible: z.boolean().default(false),
   vaxa_stod_start: isoDate.optional(),
   vaxa_stod_end: isoDate.optional(),
+  // FoU-avdrag (lag 2023:747, lib/salary/fou-avdrag.ts): the person works
+  // with forskning eller utveckling at least half and at least 15 hours of
+  // the actual working time each month (7 §).
+  fou_eligible: z.boolean().default(false),
   // Jämkning (Skatteverket beslut om ändrad beräkning av skatteavdrag):
   // overrides the tax-table lookup with a fixed percentage for a bounded
   // period. Fields have existed on the employees table since the salary
@@ -5366,6 +5370,7 @@ const EmployeeSchemaPatchBase = EmployeeSchemaBase.extend({
   semestertillagg_rate: z.number().min(0).max(0.05),
   vacation_pay_rate: z.number().min(0.12).max(0.3).nullable(),
   vaxa_stod_eligible: z.boolean(),
+  fou_eligible: z.boolean(),
   // Update only, never on create (a new employee is active). false is the
   // same soft delete as DELETE, which does nothing but set this flag; true
   // reactivates. The key was advertised by the MCP tool and the DELETE docs
